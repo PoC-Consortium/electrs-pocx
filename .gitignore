@@ -14,3 +14,7 @@ tests/bin
 .idea/
 *.txt
 *.json
+
+# testkit scratch data (local index DB / regtest datadir)
+testkit/electrs-db/
+testkit/regtest-data/

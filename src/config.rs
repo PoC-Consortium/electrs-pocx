@@ -239,7 +239,8 @@ impl Config {
 
         match config.network {
             Network::Bitcoin => (),
-            Network::Testnet => config.daemon_dir.push("testnet3"),
+            // PoCX uses "testnet" as the testnet datadir (chainparamsbase.cpp under ENABLE_POCX)
+            Network::Testnet => config.daemon_dir.push("testnet"),
             Network::Testnet4 => config.daemon_dir.push("testnet4"),
             Network::Regtest => config.daemon_dir.push("regtest"),
             Network::Signet => config.daemon_dir.push("signet"),
