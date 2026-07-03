@@ -21,9 +21,6 @@ jobs:
   linux:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
-    # musl targets build natively inside an Alpine container (no cross-compiling
-    # RocksDB); the rustup musl toolchain links them fully static by default.
-    container: ${{ matrix.container }}
 
     strategy:
       fail-fast: false
@@ -35,20 +32,10 @@ jobs:
             runner: ubuntu-24.04-arm
           - target: x86_64-unknown-linux-musl
             runner: ubuntu-24.04
-            container: alpine:3.22
           - target: aarch64-unknown-linux-musl
             runner: ubuntu-24.04-arm
-            container: alpine:3.22
 
     steps:
-    - name: Install dependencies (Alpine)
-      if: contains(matrix.target, 'musl')
-      run: apk add --no-cache build-base linux-headers clang20-libclang git curl tar
-
-    - name: Install dependencies (Ubuntu)
-      if: contains(matrix.target, 'gnu')
-      run: sudo apt-get -qqy install build-essential libclang-dev
-
     - name: Checkout electrs
       uses: actions/checkout@v6
       with:
@@ -61,31 +48,53 @@ jobs:
         ref: pocx
         path: bindex-pocx
 
-    - name: Install Rust (Alpine)
-      if: contains(matrix.target, 'musl')
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+    - name: Install dependencies (gnu)
+      if: contains(matrix.target, 'gnu')
+      run: sudo apt-get -qqy install build-essential libclang-dev
 
-    - name: Install Rust (Ubuntu)
+    - name: Install Rust (gnu)
       if: contains(matrix.target, 'gnu')
       uses: dtolnay/rust-toolchain@stable
 
-    - name: Build
-      working-directory: electrs
-      run: cargo build --release --locked --target ${{ matrix.target }}
-
-    - name: Sanity
+    - name: Build and sanity check (gnu)
+      if: contains(matrix.target, 'gnu')
       working-directory: electrs
       run: |
+        cargo build --release --locked --target ${{ matrix.target }}
         target/${{ matrix.target }}/release/electrs --version
         target/${{ matrix.target }}/release/electrs --help
+        install -D target/${{ matrix.target }}/release/electrs "$GITHUB_WORKSPACE/out/electrs"
+
+    # musl targets build natively inside an Alpine container (no cross-compiling
+    # RocksDB). Run via docker instead of `container:` because GitHub's JS
+    # actions (checkout etc.) don't work in Alpine containers on arm64 runners.
+    #
+    # Alpine's packaged Rust is used instead of rustup: rustup's musl toolchain
+    # links build scripts statically (crt-static is the musl default), and the
+    # librocksdb-sys build script then segfaults when bindgen dlopen()s
+    # libclang. Alpine's Rust defaults to dynamic linking, so build scripts and
+    # proc macros work; +crt-static is applied only to the final binary via
+    # RUSTFLAGS, which cargo restricts to the --target units.
+    - name: Build and sanity check (musl)
+      if: contains(matrix.target, 'musl')
+      run: |
+        docker run --rm -v "$PWD:/work" -w /work/electrs alpine:3.23 sh -c '
+          set -ex
+          apk add --no-cache build-base libstdc++-dev linux-headers clang21-libclang rust cargo
+          HOST_TRIPLE=$(rustc -vV | sed -n "s/^host: //p")
+          export RUSTFLAGS="-C target-feature=+crt-static"
+          cargo build --release --locked --target "$HOST_TRIPLE"
+          "target/$HOST_TRIPLE/release/electrs" --version
+          install -D "target/$HOST_TRIPLE/release/electrs" /work/out/electrs
+        '
+        # a fully static musl binary must also run on the glibc host
+        out/electrs --version
+        out/electrs --help
 
     - name: Package
       run: |
         short=$(echo ${{ matrix.target }} | sed 's/-unknown//')
-        tar -czf electrs-pocx-${{ github.ref_name }}-$short.tar.gz \
-          -C electrs/target/${{ matrix.target }}/release electrs
+        tar -czf electrs-pocx-${{ github.ref_name }}-$short.tar.gz -C out electrs
 
     - uses: actions/upload-artifact@v7
       with:
