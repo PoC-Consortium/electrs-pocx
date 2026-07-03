@@ -1,0 +1,153 @@
+name: Release
+
+# Builds release binaries for Linux (x86_64/aarch64, gnu/musl) and Windows (x64),
+# then attaches them to a GitHub release when a tag is pushed.
+#
+# electrs depends on ../bindex-pocx/bindex-lib via a path dependency, so both
+# repositories are checked out side by side.
+
+on:
+  push:
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    # musl targets build natively inside an Alpine container (no cross-compiling
+    # RocksDB); the rustup musl toolchain links them fully static by default.
+    container: ${{ matrix.container }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-24.04
+            container: alpine:3.22
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+            container: alpine:3.22
+
+    steps:
+    - name: Install dependencies (Alpine)
+      if: contains(matrix.target, 'musl')
+      run: apk add --no-cache build-base linux-headers clang20-libclang git curl tar
+
+    - name: Install dependencies (Ubuntu)
+      if: contains(matrix.target, 'gnu')
+      run: sudo apt-get -qqy install build-essential libclang-dev
+
+    - name: Checkout electrs
+      uses: actions/checkout@v6
+      with:
+        path: electrs
+
+    - name: Checkout bindex-pocx
+      uses: actions/checkout@v6
+      with:
+        repository: PoC-Consortium/bindex-pocx
+        ref: pocx
+        path: bindex-pocx
+
+    - name: Install Rust (Alpine)
+      if: contains(matrix.target, 'musl')
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+    - name: Install Rust (Ubuntu)
+      if: contains(matrix.target, 'gnu')
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Build
+      working-directory: electrs
+      run: cargo build --release --locked --target ${{ matrix.target }}
+
+    - name: Sanity
+      working-directory: electrs
+      run: |
+        target/${{ matrix.target }}/release/electrs --version
+        target/${{ matrix.target }}/release/electrs --help
+
+    - name: Package
+      run: |
+        short=$(echo ${{ matrix.target }} | sed 's/-unknown//')
+        tar -czf electrs-pocx-${{ github.ref_name }}-$short.tar.gz \
+          -C electrs/target/${{ matrix.target }}/release electrs
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: electrs-${{ matrix.target }}
+        path: electrs-pocx-*.tar.gz
+        if-no-files-found: error
+
+  windows:
+    name: Build x86_64-pc-windows-msvc
+    runs-on: windows-latest
+
+    env:
+      # for bindgen (librocksdb-sys); LLVM is preinstalled on the runner image
+      LIBCLANG_PATH: C:\Program Files\LLVM\bin
+
+    steps:
+    - name: Checkout electrs
+      uses: actions/checkout@v6
+      with:
+        path: electrs
+
+    - name: Checkout bindex-pocx
+      uses: actions/checkout@v6
+      with:
+        repository: PoC-Consortium/bindex-pocx
+        ref: pocx
+        path: bindex-pocx
+
+    - uses: dtolnay/rust-toolchain@stable
+
+    - name: Build
+      working-directory: electrs
+      run: cargo build --release --locked
+
+    - name: Sanity
+      working-directory: electrs
+      run: |
+        target\release\electrs.exe --version
+        target\release\electrs.exe --help
+
+    - name: Package
+      run: Compress-Archive -Path electrs\target\release\electrs.exe -DestinationPath electrs-pocx-${{ github.ref_name }}-x86_64-windows.zip
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: electrs-x86_64-pc-windows-msvc
+        path: electrs-pocx-*.zip
+        if-no-files-found: error
+
+  release:
+    name: Create release
+    needs: [ linux, windows ]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/download-artifact@v8
+      with:
+        path: dist
+        merge-multiple: true
+
+    - uses: softprops/action-gh-release@v3
+      with:
+        files: dist/*
+        generate_release_notes: true
