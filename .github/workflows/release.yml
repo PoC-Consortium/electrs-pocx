@@ -83,6 +83,8 @@ jobs:
           apk add --no-cache build-base libstdc++-dev linux-headers clang21-libclang rust cargo
           HOST_TRIPLE=$(rustc -vV | sed -n "s/^host: //p")
           export RUSTFLAGS="-C target-feature=+crt-static"
+          # RocksDB 9.10 headers assume transitive <cstdint> includes, dropped in GCC 15
+          export CXXFLAGS="-include cstdint"
           cargo build --release --locked --target "$HOST_TRIPLE"
           "target/$HOST_TRIPLE/release/electrs" --version
           install -D "target/$HOST_TRIPLE/release/electrs" /work/out/electrs
