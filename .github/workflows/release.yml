@@ -3,8 +3,13 @@ name: Release
 # Builds release binaries for Linux (x86_64/aarch64, gnu/musl) and Windows (x64),
 # then attaches them to a GitHub release when a tag is pushed.
 #
-# electrs depends on ../bindex-pocx/bindex-lib via a path dependency, so both
-# repositories are checked out side by side.
+# Two variants are built for every target:
+#   pocx    - the PoCX port (the tagged commit); depends on
+#             ../bindex-pocx/bindex-lib via a path dependency, so both
+#             repositories are checked out side by side
+#   bitcoin - vanilla electrs for Bitcoin Core, built from this repo's
+#             master branch (upstream romanz/electrs); bindex comes from
+#             crates.io
 
 on:
   push:
@@ -19,12 +24,18 @@ env:
 
 jobs:
   linux:
-    name: Build ${{ matrix.target }}
+    name: Build ${{ matrix.target }} (${{ matrix.variant }})
     runs-on: ${{ matrix.runner }}
 
     strategy:
       fail-fast: false
       matrix:
+        variant: [ pocx, bitcoin ]
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
         include:
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-24.04
@@ -36,17 +47,26 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-    - name: Checkout electrs
+    - name: Checkout electrs (PoCX)
+      if: matrix.variant == 'pocx'
       uses: actions/checkout@v6
       with:
         path: electrs
 
     - name: Checkout bindex-pocx
+      if: matrix.variant == 'pocx'
       uses: actions/checkout@v6
       with:
         repository: PoC-Consortium/bindex-pocx
         ref: pocx
         path: bindex-pocx
+
+    - name: Checkout electrs (vanilla, master)
+      if: matrix.variant == 'bitcoin'
+      uses: actions/checkout@v6
+      with:
+        ref: master
+        path: electrs
 
     - name: Install dependencies (gnu)
       if: contains(matrix.target, 'gnu')
@@ -96,34 +116,48 @@ jobs:
     - name: Package
       run: |
         short=$(echo ${{ matrix.target }} | sed 's/-unknown//')
-        tar -czf electrs-pocx-${{ github.ref_name }}-$short.tar.gz -C out electrs
+        tar -czf electrs-${{ matrix.variant }}-${{ github.ref_name }}-$short.tar.gz -C out electrs
 
     - uses: actions/upload-artifact@v7
       with:
-        name: electrs-${{ matrix.target }}
-        path: electrs-pocx-*.tar.gz
+        name: electrs-${{ matrix.variant }}-${{ matrix.target }}
+        path: electrs-*.tar.gz
         if-no-files-found: error
 
   windows:
-    name: Build x86_64-pc-windows-msvc
+    name: Build x86_64-pc-windows-msvc (${{ matrix.variant }})
     runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [ pocx, bitcoin ]
 
     env:
       # for bindgen (librocksdb-sys); LLVM is preinstalled on the runner image
       LIBCLANG_PATH: C:\Program Files\LLVM\bin
 
     steps:
-    - name: Checkout electrs
+    - name: Checkout electrs (PoCX)
+      if: matrix.variant == 'pocx'
       uses: actions/checkout@v6
       with:
         path: electrs
 
     - name: Checkout bindex-pocx
+      if: matrix.variant == 'pocx'
       uses: actions/checkout@v6
       with:
         repository: PoC-Consortium/bindex-pocx
         ref: pocx
         path: bindex-pocx
+
+    - name: Checkout electrs (vanilla, master)
+      if: matrix.variant == 'bitcoin'
+      uses: actions/checkout@v6
+      with:
+        ref: master
+        path: electrs
 
     - uses: dtolnay/rust-toolchain@stable
 
@@ -138,12 +172,12 @@ jobs:
         target\release\electrs.exe --help
 
     - name: Package
-      run: Compress-Archive -Path electrs\target\release\electrs.exe -DestinationPath electrs-pocx-${{ github.ref_name }}-x86_64-windows.zip
+      run: Compress-Archive -Path electrs\target\release\electrs.exe -DestinationPath electrs-${{ matrix.variant }}-${{ github.ref_name }}-x86_64-windows.zip
 
     - uses: actions/upload-artifact@v7
       with:
-        name: electrs-x86_64-pc-windows-msvc
-        path: electrs-pocx-*.zip
+        name: electrs-${{ matrix.variant }}-x86_64-pc-windows-msvc
+        path: electrs-*.zip
         if-no-files-found: error
 
   release:
