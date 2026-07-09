@@ -1,12 +1,12 @@
-# testkit — validating PoCX electrs
+# testkit — validating BTCX electrs
 
-Scaffolding to test the PoCX `electrs` + `bindex-btcx` stack against a PoCX node.
+Scaffolding to test the BTCX `electrs` + `bindex-btcx` stack against a Bitcoin PoCX node.
 Two paths: an **isolated regtest node**, or **your existing node** once it has `-rest` enabled.
 Nothing here touches a node you don't point it at.
 
 ## Prerequisites
-- A **PoCX (`ENABLE_POCX`) bitcoind** build. The stock Bitcoin Core install will *not* produce
-  286-byte PoCX headers — `check-node.ps1` will tell you which you have.
+- A **Bitcoin PoCX (`ENABLE_POCX`) bitcoind** build. The stock Bitcoin Core install will *not* produce
+  286-byte Bitcoin PoCX headers — `check-node.ps1` will tell you which you have.
 - The node must run with the **REST interface**: `-rest` (and `server=1`). bindex talks to bitcoind
   over REST only.
 - Build toolchain (already set up): LLVM/libclang at `C:\Program Files\LLVM\bin`. The run script
@@ -16,7 +16,7 @@ Nothing here touches a node you don't point it at.
 | Script | Purpose |
 |--------|---------|
 | `check-node.ps1` | Validate a node's REST: 286-byte headers + block hash == `SHA256d(header, signature zeroed)` + `/rest/spenttxouts` present. **The core correctness check.** |
-| `regtest-up.ps1` | Start an isolated PoCX regtest node with `-rest` in `testkit/regtest-data`. |
+| `regtest-up.ps1` | Start an isolated BTCX regtest node with `-rest` in `testkit/regtest-data`. |
 | `run-electrs.ps1` | Build (optional) and run `../electrs` against a node; `-SyncOnce` for a bounded test. |
 | `query-electrum.ps1` | Send one Electrum-protocol JSON-RPC request to a running electrs. |
 
@@ -29,8 +29,8 @@ cd testkit
 # then, if serving (drop -SyncOnce):
 ./query-electrum.ps1 -Addr 127.0.0.1:60401 -Method server.version
 ```
-Note: PoCX regtest mining may not use stock `generatetoaddress`; if `-Mine` warns, generate blocks
-with your PoCX tooling, then re-run `check-node.ps1`.
+Note: BTCX regtest mining may not use stock `generatetoaddress`; if `-Mine` warns, generate blocks
+with your BTCX tooling, then re-run `check-node.ps1`.
 
 ## Path B — your existing node (once `-rest` is on)
 Add `rest=1` (and `server=1`) to your `bitcoin.conf`, restart, then:

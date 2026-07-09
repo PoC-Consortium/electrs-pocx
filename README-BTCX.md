@@ -12,7 +12,7 @@ upstream `31c3fc5`): an Electrum-protocol server for BTCX, targeting nodeless wa
 
 Upstream electrs delegates all chain indexing to the external
 [`bindex`](https://github.com/romanz/bindex-rs) crate, which talks to bitcoind over the **REST
-interface only** (no `blk*.dat`, no P2P). The PoCX consensus difference — a **286-byte block
+interface only** (no `blk*.dat`, no P2P). The Bitcoin PoCX consensus difference — a **286-byte block
 header** (vs 80) whose hash is computed with the 65-byte signature zeroed — therefore lives almost
 entirely in the bindex fork:
 [PoC-Consortium/bindex-btcx](https://github.com/PoC-Consortium/bindex-btcx)
@@ -64,6 +64,6 @@ queries all correct.
 
 ## Wallet-client notes
 
-Electrum clients connecting to this server must be PoCX-aware: parse 286-byte headers, skip
+Electrum clients connecting to this server must be Bitcoin PoCX-aware: parse 286-byte headers, skip
 PoW/SPV difficulty checks, and know the BTCX genesis hash and the `pocx` bech32 HRP.
 Upstream limitation inherited from romanz/electrs: no `cp_height` header-checkpoint merkle proofs.
