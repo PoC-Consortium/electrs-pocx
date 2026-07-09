@@ -1,13 +1,13 @@
 ﻿<#
 .SYNOPSIS
-  Validate that a PoCX bitcoind's REST interface is compatible with bindex-pocx.
+  Validate that a PoCX bitcoind's REST interface is compatible with bindex-btcx.
 
 .DESCRIPTION
   Checks, against a running node's REST interface (requires `-rest`):
     1. /rest/chaininfo.json is reachable.
     2. Block headers are 286 bytes (PoCX format) - not 80 (stock Bitcoin).
     3. The block hash equals SHA256d(header with the 65-byte signature zeroed) -
-       i.e. the exact rule bindex-pocx's PoCXBlockHeader::block_hash() implements.
+       i.e. the exact rule bindex-btcx's PoCXBlockHeader::block_hash() implements.
     4. /rest/spenttxouts/<hash>.bin exists (bindex requires it; Core 30.0+).
 
   This is the key offline-ish correctness check: if hashes match here, bindex will

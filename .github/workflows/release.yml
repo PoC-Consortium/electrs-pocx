@@ -5,7 +5,7 @@ name: Release
 #
 # Two variants are built for every target:
 #   btcx    - the BTCX (Bitcoin-PoCX) port (the tagged commit); depends on
-#             ../bindex-pocx/bindex-lib via a path dependency, so both
+#             ../bindex-btcx/bindex-lib via a path dependency, so both
 #             repositories are checked out side by side
 #   bitcoin - vanilla electrs for Bitcoin Core, built from this repo's
 #             master branch (upstream romanz/electrs); bindex comes from
@@ -53,13 +53,13 @@ jobs:
       with:
         path: electrs
 
-    - name: Checkout bindex-pocx
+    - name: Checkout bindex-btcx
       if: matrix.variant == 'btcx'
       uses: actions/checkout@v6
       with:
-        repository: PoC-Consortium/bindex-pocx
-        ref: pocx
-        path: bindex-pocx
+        repository: PoC-Consortium/bindex-btcx
+        ref: btcx
+        path: bindex-btcx
 
     - name: Checkout electrs (vanilla, master)
       if: matrix.variant == 'bitcoin'
@@ -144,13 +144,13 @@ jobs:
       with:
         path: electrs
 
-    - name: Checkout bindex-pocx
+    - name: Checkout bindex-btcx
       if: matrix.variant == 'btcx'
       uses: actions/checkout@v6
       with:
-        repository: PoC-Consortium/bindex-pocx
-        ref: pocx
-        path: bindex-pocx
+        repository: PoC-Consortium/bindex-btcx
+        ref: btcx
+        path: bindex-btcx
 
     - name: Checkout electrs (vanilla, master)
       if: matrix.variant == 'bitcoin'
