@@ -1,6 +1,6 @@
 # testkit — validating PoCX electrs
 
-Scaffolding to test the PoCX `electrs` + `bindex-pocx` stack against a PoCX node.
+Scaffolding to test the PoCX `electrs` + `bindex-btcx` stack against a PoCX node.
 Two paths: an **isolated regtest node**, or **your existing node** once it has `-rest` enabled.
 Nothing here touches a node you don't point it at.
 

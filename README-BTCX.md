@@ -15,11 +15,11 @@ Upstream electrs delegates all chain indexing to the external
 interface only** (no `blk*.dat`, no P2P). The PoCX consensus difference — a **286-byte block
 header** (vs 80) whose hash is computed with the 65-byte signature zeroed — therefore lives almost
 entirely in the bindex fork:
-[PoC-Consortium/bindex-pocx](https://github.com/PoC-Consortium/bindex-pocx)
+[PoC-Consortium/bindex-btcx](https://github.com/PoC-Consortium/bindex-btcx)
 (see its `PORT-PLAN.md` for the full change list).
 
 This repo's own diff vs upstream is two lines of intent:
-- `Cargo.toml`: the `bindex` dependency points at `../bindex-pocx/bindex-lib` (path dependency).
+- `Cargo.toml`: the `bindex` dependency points at `../bindex-btcx/bindex-lib` (path dependency).
 - `src/config.rs`: the testnet datadir subdirectory is `testnet` (bitcoin-pocx) instead of `testnet3`.
 
 ## Building
@@ -27,7 +27,7 @@ This repo's own diff vs upstream is two lines of intent:
 Clone the two repos **side by side** (the path dependency requires it):
 
 ```
-git clone https://github.com/PoC-Consortium/bindex-pocx
+git clone https://github.com/PoC-Consortium/bindex-btcx
 git clone https://github.com/PoC-Consortium/electrs-btcx
 cd electrs-btcx && cargo build --release
 ```
