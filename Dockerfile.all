@@ -1,0 +1,42 @@
+# All-in-one Dockerfile running both Bitcoin-PoCX Core and BTCX Electrum Server
+FROM debian:trixie-slim AS base
+RUN apt-get update -qqy && \
+    apt-get install -qqy librocksdb-dev libsqlite3-dev libevent-dev libboost-dev wget git curl && \
+    rm -rf /var/lib/apt/lists/*
+
+### Build Electrum Rust Server (electrs) ###
+FROM base AS electrs-build
+RUN apt-get update -qqy && \
+    apt-get install -qqy cargo build-essential libclang-dev
+
+WORKDIR /build
+# Clone bindex-btcx side-by-side as required by the path dependency in Cargo.toml
+RUN git clone https://github.com/PoC-Consortium/bindex-btcx.git /build/bindex-btcx
+
+WORKDIR /build/electrs
+COPY . .
+ENV ROCKSDB_INCLUDE_DIR=/usr/include
+ENV ROCKSDB_LIB_DIR=/usr/lib
+RUN cargo install --locked --path .
+
+### Build/Download Bitcoin Core (Bitcoin-PoCX) ###
+FROM base AS bitcoin-build
+WORKDIR /build/bitcoin
+RUN wget -q https://github.com/PoC-Consortium/bitcoin/releases/download/v31.0rc1-pocx/bitcoin-31.0rc1-pocx-x86_64-linux-gnu.tar.gz && \
+    tar xvf bitcoin-31.0rc1-pocx-x86_64-linux-gnu.tar.gz && \
+    mv bitcoin-31.0rc1-pocx/bin/bitcoind . && \
+    mv bitcoin-31.0rc1-pocx/bin/bitcoin-cli .
+
+### Unified Production Runner Stage ###
+FROM base AS result
+COPY --from=electrs-build /root/.cargo/bin/electrs /usr/bin/electrs
+COPY --from=bitcoin-build /build/bitcoin/bitcoind /build/bitcoin/bitcoin-cli /usr/bin/
+
+# Expose Bitcoin P2P (9333), RPC (9332), and Electrum standard TCP (50001) ports
+EXPOSE 9332 9333 50001
+
+# Copy the automated entrypoint script that launches both daemons securely
+COPY contrib/run-all.sh /usr/bin/run-all.sh
+RUN chmod +x /usr/bin/run-all.sh
+
+ENTRYPOINT ["/usr/bin/run-all.sh"]

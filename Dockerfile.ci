@@ -4,13 +4,17 @@
 
 FROM debian:trixie-slim AS base
 RUN apt-get update -qqy
-RUN apt-get install -qqy librocksdb-dev libsqlite3-dev libevent-dev libboost-dev wget
+RUN apt-get install -qqy librocksdb-dev libsqlite3-dev libevent-dev libboost-dev wget git
 
 ### Electrum Rust Server ###
 FROM base AS electrs-build
 RUN apt-get install -qqy cargo build-essential libclang-dev
 
 # Install electrs
+WORKDIR /build
+# Clone bindex-btcx side-by-side as required by the path dependency in Cargo.toml
+RUN git clone https://github.com/PoC-Consortium/bindex-btcx.git /build/bindex-btcx
+
 WORKDIR /build/electrs
 COPY . .
 ENV ROCKSDB_INCLUDE_DIR=/usr/include
@@ -22,10 +26,10 @@ FROM base AS bitcoin-build
 # Download
 WORKDIR /build/bitcoin
 
-RUN wget -q https://bitcoincore.org/bin/bitcoin-core-31.0/test.rc2/bitcoin-31.0rc2-x86_64-linux-gnu.tar.gz
-RUN tar xvf bitcoin-31.0rc2-x86_64-linux-gnu.tar.gz
-RUN mv -v bitcoin-31.0rc2/bin/bitcoind .
-RUN mv -v bitcoin-31.0rc2/bin/bitcoin-cli .
+RUN wget -q https://github.com/PoC-Consortium/bitcoin/releases/download/v31.0rc1-pocx/bitcoin-31.0rc1-pocx-x86_64-linux-gnu.tar.gz
+RUN tar xvf bitcoin-31.0rc1-pocx-x86_64-linux-gnu.tar.gz
+RUN mv -v bitcoin-31.0rc1-pocx/bin/bitcoind .
+RUN mv -v bitcoin-31.0rc1-pocx/bin/bitcoin-cli .
 
 FROM base AS result
 # Copy the binaries
