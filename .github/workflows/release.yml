@@ -4,7 +4,7 @@ name: Release
 # then attaches them to a GitHub release when a tag is pushed.
 #
 # Two variants are built for every target:
-#   pocx    - the PoCX port (the tagged commit); depends on
+#   btcx    - the BTCX (Bitcoin-PoCX) port (the tagged commit); depends on
 #             ../bindex-pocx/bindex-lib via a path dependency, so both
 #             repositories are checked out side by side
 #   bitcoin - vanilla electrs for Bitcoin Core, built from this repo's
@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [ pocx, bitcoin ]
+        variant: [ btcx, bitcoin ]
         target:
           - x86_64-unknown-linux-gnu
           - aarch64-unknown-linux-gnu
@@ -47,14 +47,14 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-    - name: Checkout electrs (PoCX)
-      if: matrix.variant == 'pocx'
+    - name: Checkout electrs (BTCX)
+      if: matrix.variant == 'btcx'
       uses: actions/checkout@v6
       with:
         path: electrs
 
     - name: Checkout bindex-pocx
-      if: matrix.variant == 'pocx'
+      if: matrix.variant == 'btcx'
       uses: actions/checkout@v6
       with:
         repository: PoC-Consortium/bindex-pocx
@@ -131,21 +131,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [ pocx, bitcoin ]
+        variant: [ btcx, bitcoin ]
 
     env:
       # for bindgen (librocksdb-sys); LLVM is preinstalled on the runner image
       LIBCLANG_PATH: C:\Program Files\LLVM\bin
 
     steps:
-    - name: Checkout electrs (PoCX)
-      if: matrix.variant == 'pocx'
+    - name: Checkout electrs (BTCX)
+      if: matrix.variant == 'btcx'
       uses: actions/checkout@v6
       with:
         path: electrs
 
     - name: Checkout bindex-pocx
-      if: matrix.variant == 'pocx'
+      if: matrix.variant == 'btcx'
       uses: actions/checkout@v6
       with:
         repository: PoC-Consortium/bindex-pocx
