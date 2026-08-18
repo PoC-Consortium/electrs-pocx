@@ -4,13 +4,17 @@
 
 FROM debian:trixie-slim AS base
 RUN apt-get update -qqy
-RUN apt-get install -qqy librocksdb-dev curl
+RUN apt-get install -qqy librocksdb-dev curl git
 
 ### Electrum Rust Server ###
 FROM base AS electrs-build
 RUN apt-get install -qqy cargo build-essential libclang-dev
 
 # Install electrs
+WORKDIR /build
+# Clone bindex-btcx side-by-side as required by the path dependency in Cargo.toml
+RUN git clone https://github.com/PoC-Consortium/bindex-btcx.git /build/bindex-btcx
+
 WORKDIR /build/electrs
 COPY . .
 ENV ROCKSDB_INCLUDE_DIR=/usr/include

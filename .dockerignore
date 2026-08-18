@@ -1,6 +1,5 @@
 .*
 _*
-contrib
 db*
 dist
 doc
@@ -9,3 +8,4 @@ examples
 scripts
 target
 tests
+!contrib/run-all.sh
